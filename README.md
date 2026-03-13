@@ -106,7 +106,7 @@ This project includes configuration to deploy the Flutter Web build to Firebase 
    ```bash
    firebase deploy --only hosting
    ```
-5. Note the resulting Firebase Web URL output in your terminal and update the delivery submission accordingly.
+5. The application is officially deployed here: **[https://smart-class-app-80fed.web.app/](https://smart-class-app-80fed.web.app/)**
 
 ## AI Usage Report
 
