@@ -1,7 +1,11 @@
 ﻿import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
 import '../data/app_database.dart';
 import '../models/class_session.dart';
+import '../widgets/action_card.dart';
+import '../widgets/detail_row.dart';
+import '../widgets/summary_card.dart';
 import 'check_in_screen.dart';
 import 'finish_class_screen.dart';
 
@@ -54,82 +58,15 @@ class _HomeScreenState extends State<HomeScreen> {
         '${local.hour.toString().padLeft(2, '0')}:$twoDigitsMinute';
   }
 
-  Widget _buildSummaryCard(String title, String count, IconData icon, Color color) {
-    return Expanded(
-      child: Card(
-        elevation: 0,
-        color: color.withOpacity(0.1),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: color.withOpacity(0.2), width: 1),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 12),
-              Text(
-                count,
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: color.withOpacity(0.9),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                title,
-                style: TextStyle(
-                  color: color.withOpacity(0.8),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionCard(String title, IconData icon, Color color, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Ink(
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: Colors.white, size: 36),
-              const SizedBox(height: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+  String _getMoodText(int mood) {
+    switch (mood) {
+      case 1: return '😡 Very negative';
+      case 2: return '🙁 Negative';
+      case 3: return '😐 Neutral';
+      case 4: return '🙂 Positive';
+      case 5: return '😄 Very positive';
+      default: return '😐 Unknown';
+    }
   }
 
   @override
@@ -161,11 +98,19 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(height: 16),
                           Row(
                             children: [
-                              _buildSummaryCard(
-                                  'Active', activeCount.toString(), Icons.pending_actions, Colors.orange),
+                              SummaryCard(
+                                title: 'Active',
+                                count: activeCount.toString(),
+                                icon: Icons.pending_actions,
+                                color: AppColors.warning,
+                              ),
                               const SizedBox(width: 12),
-                              _buildSummaryCard(
-                                  'Completed', completedCount.toString(), Icons.task_alt, Colors.green),
+                              SummaryCard(
+                                title: 'Completed',
+                                count: completedCount.toString(),
+                                icon: Icons.task_alt,
+                                color: AppColors.success,
+                              ),
                             ],
                           ),
                           const SizedBox(height: 32),
@@ -177,20 +122,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           Row(
                             children: [
                               Expanded(
-                                child: _buildActionCard(
-                                  'Class Check-in',
-                                  Icons.login,
-                                  Theme.of(context).colorScheme.primary,
-                                  _openCheckIn,
+                                child: ActionCard(
+                                  title: 'Class Check-in',
+                                  icon: Icons.login,
+                                  color: AppColors.primary,
+                                  onTap: _openCheckIn,
                                 ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
-                                child: _buildActionCard(
-                                  'Finish Class',
-                                  Icons.logout,
-                                  const Color(0xFF0D9488),
-                                  _openFinishClass,
+                                child: ActionCard(
+                                  title: 'Finish Class',
+                                  icon: Icons.logout,
+                                  color: AppColors.secondary,
+                                  onTap: _openFinishClass,
                                 ),
                               ),
                             ],
@@ -244,13 +189,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                         padding: const EdgeInsets.all(10),
                                         decoration: BoxDecoration(
                                           color: session.isCompleted
-                                              ? Colors.green.withOpacity(0.1)
-                                              : Colors.orange.withOpacity(0.1),
+                                              ? AppColors.success.withOpacity(0.1)
+                                              : AppColors.warning.withOpacity(0.1),
                                           shape: BoxShape.circle,
                                         ),
                                         child: Icon(
                                           session.isCompleted ? Icons.check : Icons.hourglass_empty,
-                                          color: session.isCompleted ? Colors.green : Colors.orange,
+                                          color: session.isCompleted ? AppColors.success : AppColors.warning,
                                         ),
                                       ),
                                       title: Text(
@@ -268,12 +213,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
-                                              _buildDetailRow(Icons.history, 'Previous Topic', session.previousTopic),
-                                              _buildDetailRow(Icons.lightbulb_outline, 'Expected Topic', session.expectedTopic),
+                                              DetailRow(icon: Icons.history, label: 'Previous Topic', value: session.previousTopic),
+                                              DetailRow(icon: Icons.lightbulb_outline, label: 'Expected Topic', value: session.expectedTopic),
+                                              DetailRow(icon: Icons.mood, label: 'Mood', value: _getMoodText(session.moodBeforeClass)),
                                               if (session.isCompleted) ...[
                                                 const SizedBox(height: 12),
-                                                _buildDetailRow(Icons.school_outlined, 'Learned', session.learnedToday!),
-                                                _buildDetailRow(Icons.feedback_outlined, 'Feedback', session.feedback!),
+                                                DetailRow(icon: Icons.school_outlined, label: 'Learned', value: session.learnedToday!),
+                                                DetailRow(icon: Icons.feedback_outlined, label: 'Feedback', value: session.feedback!),
                                                 const SizedBox(height: 8),
                                                 Text(
                                                   'Out: ${_formatDateTime(session.checkOutTimestamp!)}',
@@ -297,33 +243,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-    );
-  }
-
-  Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 18, color: Colors.grey.shade500),
-          const SizedBox(width: 8),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(color: Colors.black87, fontSize: 14),
-                children: [
-                  TextSpan(
-                    text: '$label: ',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  TextSpan(text: value),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

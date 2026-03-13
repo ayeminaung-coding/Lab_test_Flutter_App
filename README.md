@@ -7,6 +7,44 @@ At the start of the session, students check in, verify location/QR, and submit a
 
 This project was built as part of the Midterm Lab Exam for Mobile Application Development.
 
+## System Design
+
+The system follows a simple client-side architecture for the MVP version, focusing on local validation:
+
+```text
++-------------------+
+|  Student (User)   |
++---------+---------+
+          |
+          v
++-------------------+
+|    Flutter App    |
+|-------------------|
+| Home Screen       |
+| Check-in Screen   |
+| Finish Class Screen|
++---------+---------+
+          |
+          v
++-------------------+
+|  Device Services  |
+|-------------------|
+| GPS (Geolocator)  |
+| QR Scanner        |
++---------+---------+
+          |
+          v
++-------------------+
+|  Local Database   |
+| SQLite            |
++-------------------+
+```
+
+* **Student (User):** Interacts directly with the application interface to submit presence and reflections.
+* **Flutter App:** Forms the visual presentation layer consisting of the distinct user journey (Home, Check-in, Finish Class screens).
+* **Device Services:** Invokes native device hardware through integrations (`geolocator` and `mobile_scanner`) to strictly enforce that the student is physically present in the classroom.
+* **Local Database:** An offline-first local SQLite datastore that maintains a persistent record of all check-in timestamps, required locations, expectations, and feedback entries.
+
 ## Setup Instructions
 
 ### Prerequisites

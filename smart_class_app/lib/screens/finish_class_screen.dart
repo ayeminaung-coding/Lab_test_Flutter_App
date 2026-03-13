@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
 
 import '../data/app_database.dart';
 import '../models/class_session.dart';
@@ -140,7 +141,7 @@ class _FinishClassScreenState extends State<FinishClassScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, color: const Color(0xFF0D9488), size: 24),
+          Icon(icon, color: AppColors.secondary, size: 24),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -162,7 +163,7 @@ class _FinishClassScreenState extends State<FinishClassScreen> {
           padding: const EdgeInsets.all(20),
           child: FilledButton(
              style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF0D9488),
+              backgroundColor: AppColors.secondary,
             ),
             onPressed: (_isSaving || _activeSessions.isEmpty) ? null : _submitFinishClass,
             child: _isSaving 

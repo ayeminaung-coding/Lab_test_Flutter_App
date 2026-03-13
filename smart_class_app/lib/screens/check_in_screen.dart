@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
 
 import '../data/app_database.dart';
 import '../services/location_service.dart';
@@ -142,7 +143,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, color: Theme.of(context).colorScheme.primary, size: 24),
+          Icon(icon, color: AppColors.primary, size: 24),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -282,9 +283,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       const SizedBox(height: 12),
                       SliderTheme(
                         data: SliderTheme.of(context).copyWith(
-                          activeTrackColor: Theme.of(context).colorScheme.primary,
-                          thumbColor: Theme.of(context).colorScheme.primary,
-                          overlayColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                          activeTrackColor: AppColors.primary,
+                          thumbColor: AppColors.primary,
+                          overlayColor: AppColors.primary.withOpacity(0.2),
                           valueIndicatorTextStyle: const TextStyle(color: Colors.white),
                         ),
                         child: Slider(
@@ -303,8 +304,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('😡', style: TextStyle(fontSize: 16)),
-                            Text('😄', style: TextStyle(fontSize: 16)),
+                              Text('😡', style: TextStyle(fontSize: 16)),
+                              Text('😄', style: TextStyle(fontSize: 16)),
                           ],
                         ),
                       ),
