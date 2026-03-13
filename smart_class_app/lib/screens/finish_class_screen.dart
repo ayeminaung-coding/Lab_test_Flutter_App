@@ -121,9 +121,11 @@ class _FinishClassScreenState extends State<FinishClassScreen> {
         const SnackBar(content: Text('Class completed successfully.'), backgroundColor: Colors.green),
       );
       Navigator.of(context).pop(true);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('Finish-class save failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
       if (!mounted) return;
-      _showErrorSnackBar('Unable to save class completion. Please try again.');
+      _showErrorSnackBar('Unable to save class completion: ${_toUserError(error)}');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -133,6 +135,14 @@ class _FinishClassScreenState extends State<FinishClassScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red.shade600),
     );
+  }
+
+  String _toUserError(Object error) {
+    final message = error.toString().replaceFirst('Exception: ', '').trim();
+    if (message.isEmpty || message.startsWith('Instance of') || message.startsWith('type ')) {
+      return 'Please refresh and try again.';
+    }
+    return message;
   }
 
   Widget _buildSectionHeader(String title, IconData icon) {

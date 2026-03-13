@@ -101,9 +101,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
         const SnackBar(content: Text('Check-in saved successfully.'), backgroundColor: Colors.green),
       );
       Navigator.of(context).pop(true);
-    } catch (_) {
+    } catch (error, stackTrace) {
+      debugPrint('Check-in save failed: $error');
+      debugPrintStack(stackTrace: stackTrace);
       if (!mounted) return;
-      _showErrorSnackBar('Unable to save check-in. Please try again.');
+      _showErrorSnackBar('Unable to save check-in: ${_toUserError(error)}');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -113,6 +115,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red.shade600),
     );
+  }
+
+  String _toUserError(Object error) {
+    final message = error.toString().replaceFirst('Exception: ', '').trim();
+    if (message.isEmpty || message.startsWith('Instance of') || message.startsWith('type ')) {
+      return 'Please refresh and try again.';
+    }
+    return message;
   }
 
   String _moodEmoji(int mood) {

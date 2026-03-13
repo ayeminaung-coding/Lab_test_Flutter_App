@@ -1,4 +1,5 @@
 ﻿import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
@@ -9,6 +10,7 @@ class AppDatabase {
   static final AppDatabase instance = AppDatabase._init();
   static Database? _database;
   static const _webStorageKey = 'smart_class_sessions_web';
+  static final List<ClassSession> _webMemorySessions = <ClassSession>[];
 
   AppDatabase._init();
 
@@ -56,7 +58,7 @@ CREATE TABLE sessions (
     required String expectedTopic,
     required int moodBeforeClass,
   }) async {
-    final data = {
+    final data = <String, Object?>{
       'student_id': studentId,
       'check_in_timestamp': checkInTimestamp.toIso8601String(),
       'check_in_latitude': checkInLatitude,
@@ -68,16 +70,44 @@ CREATE TABLE sessions (
     };
 
     if (kIsWeb) {
-      final prefs = await SharedPreferences.getInstance();
-      final allSessions = await getAllSessions();
-      final newId = allSessions.isEmpty ? 1 : allSessions.map((s) => s.id).reduce((a, b) => a > b ? a : b) + 1;
-      data['id'] = newId;
-      allSessions.insert(0, ClassSession.fromMap(data));
-      await _saveWebSessions(prefs, allSessions);
+      final allSessions = await _loadWebSessionsSafe();
+      final newId = _nextSessionId(allSessions);
+      final session = ClassSession.fromMap({
+        ...data,
+        'id': newId,
+        'check_out_timestamp': null,
+        'check_out_latitude': null,
+        'check_out_longitude': null,
+        'check_out_qr_code': null,
+        'learned_today': null,
+        'feedback': null,
+      });
+      allSessions.insert(0, session);
+      await _persistWebSessionsSafe(allSessions);
       return newId;
     } else {
       final db = await instance.database;
-      return await db.insert('sessions', data);
+      final newId = await db.insert('sessions', data);
+      
+      try {
+        final allSessions = await _loadWebSessionsSafe();
+        final session = ClassSession.fromMap({
+          ...data,
+          'id': newId,
+          'check_out_timestamp': null,
+          'check_out_latitude': null,
+          'check_out_longitude': null,
+          'check_out_qr_code': null,
+          'learned_today': null,
+          'feedback': null,
+        });
+        allSessions.insert(0, session);
+        await _persistWebSessionsSafe(allSessions);
+      } catch (e, st) {
+        developer.log('Failed to save to shared_preferences', error: e, stackTrace: st);
+      }
+      
+      return newId;
     }
   }
 
@@ -90,7 +120,7 @@ CREATE TABLE sessions (
     required String learnedToday,
     required String feedback,
   }) async {
-    final data = {
+    final data = <String, Object?>{
       'check_out_timestamp': checkOutTimestamp.toIso8601String(),
       'check_out_latitude': checkOutLatitude,
       'check_out_longitude': checkOutLongitude,
@@ -100,8 +130,7 @@ CREATE TABLE sessions (
     };
 
     if (kIsWeb) {
-      final prefs = await SharedPreferences.getInstance();
-      final allSessions = await getAllSessions();
+      final allSessions = await _loadWebSessionsSafe();
       final index = allSessions.indexWhere((s) => s.id == sessionId);
       if (index == -1) return;
       
@@ -124,26 +153,89 @@ CREATE TABLE sessions (
         feedback: feedback,
       );
       allSessions[index] = updated;
-      await _saveWebSessions(prefs, allSessions);
+      await _persistWebSessionsSafe(allSessions);
     } else {
       final db = await instance.database;
       await db.update('sessions', data, where: 'id = ?', whereArgs: [sessionId]);
+      
+      try {
+        final allSessions = await _loadWebSessionsSafe();
+        final index = allSessions.indexWhere((s) => s.id == sessionId);
+        if (index != -1) {
+          final existing = allSessions[index];
+          final updated = ClassSession(
+            id: existing.id,
+            studentId: existing.studentId,
+            checkInTimestamp: existing.checkInTimestamp,
+            checkInLatitude: existing.checkInLatitude,
+            checkInLongitude: existing.checkInLongitude,
+            checkInQrCode: existing.checkInQrCode,
+            previousTopic: existing.previousTopic,
+            expectedTopic: existing.expectedTopic,
+            moodBeforeClass: existing.moodBeforeClass,
+            checkOutTimestamp: checkOutTimestamp,
+            checkOutLatitude: checkOutLatitude,
+            checkOutLongitude: checkOutLongitude,
+            checkOutQrCode: checkOutQrCode,
+            learnedToday: learnedToday,
+            feedback: feedback,
+          );
+          allSessions[index] = updated;
+          await _persistWebSessionsSafe(allSessions);
+        }
+      } catch (e, st) {
+        developer.log('Failed to save to shared_preferences', error: e, stackTrace: st);
+      }
     }
   }
 
   Future<List<ClassSession>> getAllSessions() async {
     if (kIsWeb) {
-      final prefs = await SharedPreferences.getInstance();
-      final jsonString = prefs.getString(_webStorageKey);
-      if (jsonString == null) return [];
-      final List<dynamic> jsonList = jsonDecode(jsonString);
-      return jsonList.map((map) => ClassSession.fromMap(Map<String, dynamic>.from(map))).toList();
+      return _loadWebSessionsSafe();
     } else {
       final db = await instance.database;
       final maps = await db.query('sessions', orderBy: 'id DESC');
       if (maps.isNotEmpty) return maps.map((map) => ClassSession.fromMap(map)).toList();
       return [];
     }
+  }
+
+  Future<List<ClassSession>> _loadWebSessionsSafe() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final sessions = await _loadWebSessions(prefs);
+      _setMemorySessions(sessions);
+      return sessions;
+    } catch (error, stackTrace) {
+      developer.log(
+        'Web storage unavailable. Using in-memory session store.',
+        name: 'AppDatabase',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return List<ClassSession>.from(_webMemorySessions);
+    }
+  }
+
+  Future<void> _persistWebSessionsSafe(List<ClassSession> sessions) async {
+    _setMemorySessions(sessions);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await _saveWebSessions(prefs, sessions);
+    } catch (error, stackTrace) {
+      developer.log(
+        'Persisting to web storage failed. Keeping in-memory copy only.',
+        name: 'AppDatabase',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
+  }
+
+  void _setMemorySessions(List<ClassSession> sessions) {
+    _webMemorySessions
+      ..clear()
+      ..addAll(sessions);
   }
 
   Future<List<ClassSession>> getActiveSessions() async {
@@ -176,6 +268,56 @@ CREATE TABLE sessions (
       'learned_today': s.learnedToday,
       'feedback': s.feedback,
     }).toList();
-    await prefs.setString(_webStorageKey, jsonEncode(mapList));
+    final didSave = await prefs.setString(_webStorageKey, jsonEncode(mapList));
+    if (!didSave) {
+      throw Exception('Browser storage rejected the save request.');
+    }
+  }
+
+  Future<List<ClassSession>> _loadWebSessions(SharedPreferences prefs) async {
+    final jsonString = prefs.getString(_webStorageKey);
+    if (jsonString == null || jsonString.trim().isEmpty) return [];
+
+    try {
+      final decoded = jsonDecode(jsonString);
+      if (decoded is! List) {
+        throw const FormatException('Session payload is not a JSON list.');
+      }
+
+      final sessions = <ClassSession>[];
+      for (final item in decoded) {
+        if (item is! Map) continue;
+
+        try {
+          sessions.add(ClassSession.fromMap(Map<String, dynamic>.from(item)));
+        } catch (error, stackTrace) {
+          developer.log(
+            'Skipping malformed session entry in web storage.',
+            name: 'AppDatabase',
+            error: error,
+            stackTrace: stackTrace,
+          );
+        }
+      }
+
+      return sessions;
+    } catch (error, stackTrace) {
+      developer.log(
+        'Invalid web session payload detected. Resetting stored sessions.',
+        name: 'AppDatabase',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      await prefs.remove(_webStorageKey);
+      return [];
+    }
+  }
+
+  int _nextSessionId(List<ClassSession> sessions) {
+    if (sessions.isEmpty) return 1;
+    return sessions.fold<int>(0, (maxId, session) {
+          return session.id > maxId ? session.id : maxId;
+        }) +
+        1;
   }
 }
